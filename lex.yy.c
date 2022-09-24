@@ -732,7 +732,7 @@ case 3:
 /* rule 3 can match eol */
 YY_RULE_SETUP
 #line 12 "../lex.l"
-{total += numberValue;printf("%d",total);}
+{total += numberValue;printf("%d\n",total);printf("Done!");}
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
