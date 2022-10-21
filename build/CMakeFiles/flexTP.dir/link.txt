@@ -1,3 +1,0 @@
-"C:\Program Files\CMake\bin\cmake.exe" -E rm -f CMakeFiles\flexTP.dir/objects.a
-C:\MinGW\bin\ar.exe qc CMakeFiles\flexTP.dir/objects.a @CMakeFiles\flexTP.dir\objects1.rsp
-C:\MinGW\bin\gcc.exe -g -Wl,--whole-archive CMakeFiles\flexTP.dir/objects.a -Wl,--no-whole-archive -o flexTP.exe -Wl,--out-implib,libflexTP.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles\flexTP.dir\linklibs.rsp
