@@ -81,9 +81,20 @@
     char* copiarValor();
     extern char buff;
     void start();
+    void buscarIdentificador(char* str);
+    FILE* buffer;
+    int listSize = 0;
+
+
+    typedef struct Diccionario{
+        char** vals;
+        int size;
+    } Diccionario;
+
+    Diccionario diccionario;
 
 /* Line 371 of yacc.c  */
-#line 87 "y.tab.c"
+#line 98 "y.tab.c"
 
 # ifndef YY_NULL
 #  if defined __cplusplus && 201103L <= __cplusplus
@@ -155,14 +166,14 @@ extern int yydebug;
 typedef union YYSTYPE
 {
 /* Line 387 of yacc.c  */
-#line 20 "parser.y"
+#line 31 "parser.y"
 
     char* expression;
     char* identifier;
 
 
 /* Line 387 of yacc.c  */
-#line 166 "y.tab.c"
+#line 177 "y.tab.c"
 } YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
@@ -190,7 +201,7 @@ int yyparse ();
 /* Copy the second part of user declarations.  */
 
 /* Line 390 of yacc.c  */
-#line 194 "y.tab.c"
+#line 205 "y.tab.c"
 
 #ifdef short
 # undef short
@@ -410,7 +421,7 @@ union yyalloc
 /* YYFINAL -- State number of the termination state.  */
 #define YYFINAL  10
 /* YYLAST -- Last index in YYTABLE.  */
-#define YYLAST   31
+#define YYLAST   33
 
 /* YYNTOKENS -- Number of terminals.  */
 #define YYNTOKENS  16
@@ -467,25 +478,25 @@ static const yytype_uint8 yytranslate[] =
 static const yytype_uint8 yyprhs[] =
 {
        0,     0,     3,     6,    10,    12,    15,    20,    26,    32,
-      34,    38,    40,    44,    46,    48,    52,    54
+      36,    38,    42,    44,    46,    50,    52,    54
 };
 
 /* YYRHS -- A `-1'-separated list of the rules' RHS.  */
 static const yytype_int8 yyrhs[] =
 {
       17,     0,    -1,     3,    18,    -1,    19,     4,    11,    -1,
-      20,    -1,    19,    20,    -1,    21,     6,    24,     5,    -1,
-       9,     8,    22,     7,     5,    -1,    10,     8,    23,     7,
-       5,    -1,    12,    -1,    22,    14,    21,    -1,    21,    -1,
-      23,    14,    24,    -1,    24,    -1,    25,    -1,    24,    15,
-      25,    -1,    12,    -1,    13,    -1
+      20,    -1,    19,    20,    -1,    25,     6,    23,     5,    -1,
+       9,     8,    21,     7,     5,    -1,    10,     8,    22,     7,
+       5,    -1,    21,    14,    25,    -1,    25,    -1,    22,    14,
+      23,    -1,    23,    -1,    24,    -1,    23,    15,    24,    -1,
+      25,    -1,    13,    -1,    12,    -1
 };
 
 /* YYRLINE[YYN] -- source line where rule number YYN was defined.  */
 static const yytype_uint8 yyrline[] =
 {
-       0,    34,    34,    37,    41,    42,    45,    46,    47,    51,
-      54,    55,    59,    60,    64,    65,    69,    70
+       0,    45,    45,    48,    52,    53,    56,    57,    58,    62,
+      63,    67,    68,    72,    73,    77,    78,    82
 };
 #endif
 
@@ -497,8 +508,8 @@ static const char *const yytname[] =
   "$end", "error", "$undefined", "INICIO", "FIN", "SEPARADOR", "IGUAL",
   "PARENTESISDER", "PARENTESISIZQ", "LEER", "ESCRIBIR", "FDT",
   "IDENTIFICADOR", "CONSTANTE", "COMA", "OPERADOR", "$accept", "input",
-  "programa", "listaSentencias", "sentencia", "ID", "listaIdentificadores",
-  "listaExpresiones", "expresion", "primaria", YY_NULL
+  "programa", "listaSentencias", "sentencia", "listaIdentificadores",
+  "listaExpresiones", "expresion", "primaria", "ID", YY_NULL
 };
 #endif
 
@@ -516,14 +527,14 @@ static const yytype_uint16 yytoknum[] =
 static const yytype_uint8 yyr1[] =
 {
        0,    16,    17,    18,    19,    19,    20,    20,    20,    21,
-      22,    22,    23,    23,    24,    24,    25,    25
+      21,    22,    22,    23,    23,    24,    24,    25
 };
 
 /* YYR2[YYN] -- Number of symbols composing right hand side of rule YYN.  */
 static const yytype_uint8 yyr2[] =
 {
-       0,     2,     2,     3,     1,     2,     4,     5,     5,     1,
-       3,     1,     3,     1,     1,     3,     1,     1
+       0,     2,     2,     3,     1,     2,     4,     5,     5,     3,
+       1,     3,     1,     1,     3,     1,     1,     1
 };
 
 /* YYDEFACT[STATE-NAME] -- Default reduction number in state STATE-NUM.
@@ -531,16 +542,16 @@ static const yytype_uint8 yyr2[] =
    means the default is an error.  */
 static const yytype_uint8 yydefact[] =
 {
-       0,     0,     0,     0,     0,     9,     2,     0,     4,     0,
-       1,     0,     0,     0,     5,     0,    11,     0,    16,    17,
-       0,    13,    14,     3,     0,     0,     0,     0,     0,     0,
-       6,     7,    10,     8,    12,    15
+       0,     0,     0,     0,     0,    17,     2,     0,     4,     0,
+       1,     0,     0,     0,     5,     0,     0,    10,    16,     0,
+      12,    13,    15,     3,     0,     0,     0,     0,     0,     0,
+       6,     7,     9,     8,    11,    14
 };
 
 /* YYDEFGOTO[NTERM-NUM].  */
 static const yytype_int8 yydefgoto[] =
 {
-      -1,     2,     6,     7,     8,     9,    17,    20,    21,    22
+      -1,     2,     6,     7,     8,    16,    19,    20,    21,    22
 };
 
 /* YYPACT[STATE-NUM] -- Index in YYTABLE of the portion describing
@@ -548,16 +559,16 @@ static const yytype_int8 yydefgoto[] =
 #define YYPACT_NINF -15
 static const yytype_int8 yypact[] =
 {
-      13,    -5,    18,    -2,    11,   -15,   -15,    -1,   -15,    17,
-     -15,    12,     9,    14,   -15,     9,   -15,     3,   -15,   -15,
-       6,    15,   -15,   -15,    -3,    21,    12,    22,     9,     9,
-     -15,   -15,   -15,   -15,    15,   -15
+       0,    -5,    18,    15,    16,   -15,   -15,     7,   -15,     3,
+     -15,    14,     9,    17,   -15,     9,     1,   -15,   -15,     6,
+      12,   -15,   -15,   -15,    -3,    24,    14,    25,     9,     9,
+     -15,   -15,   -15,   -15,    12,   -15
 };
 
 /* YYPGOTO[NTERM-NUM].  */
 static const yytype_int8 yypgoto[] =
 {
-     -15,   -15,   -15,   -15,    24,   -11,   -15,   -15,   -14,     0
+     -15,   -15,   -15,   -15,    26,   -15,   -15,   -14,     2,    -1
 };
 
 /* YYTABLE[YYPACT[STATE-NUM]].  What to do in state STATE-NUM.  If
@@ -566,10 +577,10 @@ static const yytype_int8 yypgoto[] =
 #define YYTABLE_NINF -1
 static const yytype_uint8 yytable[] =
 {
-      16,    24,    30,    13,     3,     4,    11,     5,     3,     4,
-      25,     5,    29,    27,    34,    32,     1,    26,    10,    12,
-      28,    18,    19,    15,     5,    23,    31,    33,     0,    35,
-      29,    14
+       9,    24,    30,     1,     3,     4,     9,     5,    25,    15,
+      17,    13,    29,    27,    34,    26,     3,     4,    10,     5,
+      28,     5,    18,    11,    12,    32,     5,    29,    23,    31,
+      33,    35,     0,    14
 };
 
 #define yypact_value_is_default(Yystate) \
@@ -580,20 +591,20 @@ static const yytype_uint8 yytable[] =
 
 static const yytype_int8 yycheck[] =
 {
-      11,    15,     5,     4,     9,    10,     8,    12,     9,    10,
-       7,    12,    15,     7,    28,    26,     3,    14,     0,     8,
-      14,    12,    13,     6,    12,    11,     5,     5,    -1,    29,
-      15,     7
+       1,    15,     5,     3,     9,    10,     7,    12,     7,     6,
+      11,     4,    15,     7,    28,    14,     9,    10,     0,    12,
+      14,    12,    13,     8,     8,    26,    12,    15,    11,     5,
+       5,    29,    -1,     7
 };
 
 /* YYSTOS[STATE-NUM] -- The (internal number of the) accessing
    symbol of state STATE-NUM.  */
 static const yytype_uint8 yystos[] =
 {
-       0,     3,    17,     9,    10,    12,    18,    19,    20,    21,
-       0,     8,     8,     4,    20,     6,    21,    22,    12,    13,
-      23,    24,    25,    11,    24,     7,    14,     7,    14,    15,
-       5,     5,    21,     5,    24,    25
+       0,     3,    17,     9,    10,    12,    18,    19,    20,    25,
+       0,     8,     8,     4,    20,     6,    21,    25,    13,    22,
+      23,    24,    25,    11,    23,     7,    14,     7,    14,    15,
+       5,     5,    25,     5,    23,    24
 };
 
 #define yyerrok		(yyerrstatus = 0)
@@ -1395,61 +1406,61 @@ yyreduce:
     {
         case 3:
 /* Line 1792 of yacc.c  */
-#line 37 "parser.y"
+#line 48 "parser.y"
     {finalizarPrograma();}
     break;
 
   case 6:
 /* Line 1792 of yacc.c  */
-#line 45 "parser.y"
+#line 56 "parser.y"
     {escribirExpresionAsignacion((yyvsp[(1) - (4)].expression),(yyvsp[(3) - (4)].expression));}
     break;
 
   case 7:
 /* Line 1792 of yacc.c  */
-#line 46 "parser.y"
+#line 57 "parser.y"
     {escribirExpresionLeer((yyvsp[(3) - (5)].expression));}
     break;
 
   case 8:
 /* Line 1792 of yacc.c  */
-#line 47 "parser.y"
+#line 58 "parser.y"
     {escribirExpresionEscribir((yyvsp[(3) - (5)].expression));}
     break;
 
   case 9:
 /* Line 1792 of yacc.c  */
-#line 51 "parser.y"
-    {(yyval.expression) = copiarValor();}
-    break;
-
-  case 10:
-/* Line 1792 of yacc.c  */
-#line 54 "parser.y"
+#line 62 "parser.y"
     {(yyval.expression) = agregar((yyvsp[(1) - (3)].expression),(yyvsp[(3) - (3)].expression),',');}
     break;
 
-  case 12:
+  case 11:
 /* Line 1792 of yacc.c  */
-#line 59 "parser.y"
+#line 67 "parser.y"
     {(yyval.expression) = agregar((yyvsp[(1) - (3)].expression),(yyvsp[(3) - (3)].expression),',');}
     break;
 
   case 14:
 /* Line 1792 of yacc.c  */
-#line 64 "parser.y"
-    {(yyval.expression) = copiarValor();}
-    break;
-
-  case 15:
-/* Line 1792 of yacc.c  */
-#line 65 "parser.y"
+#line 73 "parser.y"
     {(yyval.expression) = agregar((yyvsp[(1) - (3)].expression),(yyvsp[(3) - (3)].expression),buff);}
     break;
 
+  case 16:
+/* Line 1792 of yacc.c  */
+#line 78 "parser.y"
+    {(yyval.expression) = copiarValor(); listSize++;}
+    break;
+
+  case 17:
+/* Line 1792 of yacc.c  */
+#line 82 "parser.y"
+    {(yyval.expression) = copiarValor(); buscarIdentificador((yyval.expression));}
+    break;
+
 
 /* Line 1792 of yacc.c  */
-#line 1453 "y.tab.c"
+#line 1464 "y.tab.c"
       default: break;
     }
   /* User semantic actions sometimes alter yychar, and that requires
@@ -1681,33 +1692,16 @@ yyreturn:
 
 
 /* Line 2055 of yacc.c  */
-#line 72 "parser.y"
+#line 84 "parser.y"
 
-
-
-void finalizarPrograma(){
-    printf("Finalizado!\n");
-}
-
-void escribirExpresionAsignacion(char* identificador, char* expresion){
-    printf("%s := %s; \n", identificador, expresion);
-}
-
-void escribirExpresionEscribir(char* listaIdentificadores){
-    printf("escribir(%s);\n",listaIdentificadores);
-}
-
-void escribirExpresionLeer(char* listaIdentificadores){
-    printf("leer(%s);\n",listaIdentificadores);
-}
 
 char* agregar(char* lista,char* elemento, char separator){
     char* newList = malloc(strlen(lista) + strlen(elemento) + 2);
     sprintf(newList,"%s%c%s",lista,separator,elemento);
     free(lista);
+    listSize++;
     return newList;
 }
-
 
 char* copiarValor(){
     int size = strlen(yylval.expression);
@@ -1721,9 +1715,75 @@ void yyerror(const char* charset){
     printf("FUCK: %s\n",charset);
 }
 
+void copiar(FILE* dst, FILE* src){
+    char ch = fgetc(src);
+
+    while (ch != EOF)
+    {
+        fputc(ch,dst);
+        ch = fgetc(src);
+    }
+}
+
+void finalizarPrograma(){
+    fclose(buffer);
+
+    FILE* programa = fopen("PROGRAMA_COMPILADO.c","w+");
+    FILE* buffer_lectura = fopen("buffer.f","r");
+    FILE* codigo = fopen("file.c","r");
+
+    fprintf(programa,"#include<stdlib.h>\n#include<string.h>\n");
+    copiar(programa,codigo);
+    fprintf(programa, "int main(){\n");
+    copiar(programa,buffer_lectura);
+    fprintf(programa,"}");
+
+    fclose(buffer_lectura);
+    fclose(codigo);
+    fclose(programa);
+}
+
+void buscarIdentificador(char* identificador){
+    for (int i =0; i < diccionario.size; i++){
+        if (strcmp(identificador,diccionario.vals[i]) == 0){
+            return;
+        }
+    }
+    diccionario.vals[diccionario.size] = malloc(strlen(identificador) + 1);
+    sprintf(diccionario.vals[diccionario.size],"%s",identificador);
+    fprintf(buffer,"int %s;\n",identificador);
+    diccionario.size++;
+}
+
+void escribirExpresionAsignacion(char* identificador, char* expresion){
+    fprintf(buffer,"%s = %s;\n",identificador,expresion);
+}
+
+
+void escribirExpresionEscribir(char* listaIdentificadores){
+   char* token = strtok(listaIdentificadores,",");
+     for(int i = 0; i < listSize; i++){
+        fprintf(buffer,"printf(%s,%s);\n","\"\%d \\n\"",token);
+        token = strtok(NULL,",");
+    }
+    listSize = 0;
+}
+
+void escribirExpresionLeer(char* listaIdentificadores){
+    char* token = strtok(listaIdentificadores,",");
+    for(int i = 0; i < listSize; i++){
+        fprintf(buffer,"char* param%d = NULL;\n param%d = scan_line(param%d);\n ", i,i,i);
+        fprintf(buffer,"%s = atoi(param%d);\n",token,i);
+        token = strtok(NULL,",");
+    }
+    listSize = 0;
+}
+
 void start(){
     yylval.expression = malloc(strlen(START_STRING));
-    strcpy(yylval.expression,START_STRING);
+    buffer = fopen("buffer.f","w+");
+    diccionario.vals = malloc(sizeof(char*) * 100);
+    diccionario.size = 0;
 }
 
 int main(void){
