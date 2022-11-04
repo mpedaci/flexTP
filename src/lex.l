@@ -7,6 +7,8 @@ void copyToVal(char* texto);
 void copyToOp(char* texto);
 char buff;
 %}
+%option yylineno
+
 identificador [a-zA-z]([a-zA-Z]|[0-9])*
 constante [1-9][0-9]+
 operador [+-]

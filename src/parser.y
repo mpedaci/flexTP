@@ -6,6 +6,10 @@
     extern char* yytext;
     extern int yylex(void);
     extern int yyleng;
+
+    #define YYERROR_VERBOSE 1
+    extern int yylineno;
+
     void yyerror(const char*);
     void finalizarPrograma();
     void escribirExpresionAsignacion(char* identificador, char* expresion);
@@ -100,7 +104,10 @@ char* copiarValor(){
 
 
 void yyerror(const char* charset){
-    printf("FUCK: %s\n",charset);
+    /* printf("FUCK: %s\n",charset); */
+    fprintf(stderr,"error: %s in line %d\n", charset, yylineno);
+    fprintf(stderr,"near to ==> %s", yylval.expression);
+    fprintf(stderr,"\n");
 }
 
 void copiar(FILE* dst, FILE* src){
