@@ -47,10 +47,6 @@ void copyToVal(char *texto, int type){
     }
     switch(type){
         case 1:
-            if (strlen(texto) > strlen(yylval.str_val)){
-                free(yylval.str_val);
-                yylval.str_val = malloc(strlen(yylval.str_val) * 2);
-            }
             strcpy(yylval.str_val, texto);
             break;
         case 2:

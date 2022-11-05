@@ -60,45 +60,45 @@
 
 %union {
     int     int_val;
-    char*   str_val;
+    char    str_val[33];
 }
 
 %token INICIO FIN SUMA RESTA ASIGNACION PARENTESISIZQ PARENTESISDER PUNTOYCOMA LEER ESCRIBIR COMA FDT
 %token <int_val> CONSTANTE
 %token <str_val> IDENTIFICADOR
 
-%type <str_val> sentencia listaDeIds ID;
+%type <str_val> sentencia listaDeIds;
 %type <int_val> expresion primaria listaDeExpresiones;
 
 %left SUMA RESTA
 
 %%
 
-input:          INICIO programa;
+input:                  INICIO programa;
 
-programa:       sentencias FIN FDT {finalizarPrograma();};
+programa:               sentencias FIN FDT {finalizarPrograma();};
 
-sentencias:     sentencia | sentencias sentencia;
+sentencias:             sentencia | sentencias sentencia;
 
-sentencia:      ID ASIGNACION expresion PUNTOYCOMA { asignarValorIdentificador($1, $3); } |
-                LEER PARENTESISIZQ listaDeIds PARENTESISDER PUNTOYCOMA { completarIdentificadores(); } |
-                ESCRIBIR PARENTESISIZQ listaDeExpresiones PARENTESISDER PUNTOYCOMA { escribirValores(); }
+sentencia:              IDENTIFICADOR ASIGNACION expresion PUNTOYCOMA { asignarValorIdentificador($1, $3); } |
+                        LEER PARENTESISIZQ listaDeIds PARENTESISDER PUNTOYCOMA { completarIdentificadores(); } |
+                        ESCRIBIR PARENTESISIZQ listaDeExpresiones PARENTESISDER PUNTOYCOMA { escribirValores(); } ;
 
-listaDeIds:             listaDeIds COMA ID { agregarIdentificadorACompletar($3); } |
-                        ID { agregarIdentificadorACompletar($1); };
+listaDeIds:             IDENTIFICADOR { agregarIdentificadorACompletar($1); } |
+                        listaDeIds COMA IDENTIFICADOR { agregarIdentificadorACompletar($3); } ;
 
-listaDeExpresiones:     listaDeExpresiones COMA expresion { cargarValorExpresion($1); } | 
-                        expresion { cargarValorExpresion($1); };
+listaDeExpresiones:     expresion { cargarValorExpresion($1); } |
+                        listaDeExpresiones COMA expresion { cargarValorExpresion($3); } ;
 
-expresion:          primaria { $$ = $1; } |
-                    expresion SUMA primaria { $$ = $1 + $3; } | 
-                    expresion RESTA primaria { $$ = $1 - $3; };
+expresion:              primaria |
+                        expresion SUMA primaria { $$ = $1 + $3; } |
+                        expresion RESTA primaria { $$ = $1 - $3; } ;
 
-primaria:           ID { if (existeIdentificadorYNoEsPalabraReservada($1) == 1) { $$ = valorIdentificador($1); } } | 
-                    CONSTANTE {$$ = $1;} | 
-                    PARENTESISIZQ expresion PARENTESISDER { $$ = $2; };
-
-ID:                 IDENTIFICADOR { $$ = $1; };
+primaria:               IDENTIFICADOR {
+                            existeIdentificadorYNoEsPalabraReservada($1);
+                            $$ = valorIdentificador($1);
+                        } | 
+                        CONSTANTE ;
 %%
 
 void yyerror(const char* texto) {
@@ -116,13 +116,7 @@ void errorPalabraReservada(char* palabra){
     finalizarPrograma();
 }
 
-void inicializarVariables(){
-    yylval.str_val = malloc(strlen(START_STRING));
-}
-
 void iniciarTablaDeSimbolos(){
-    inicializarVariables();
-
     NodoTS *nodoINICIO = crearNodoTS("inicio", 0, 1);
     NodoTS *nodoFIN = crearNodoTS("fin", 0, 1);
     NodoTS *nodoESCRIBIR = crearNodoTS("escribir", 0, 1);
@@ -153,6 +147,14 @@ void completarIdentificadores(){
         cargarIdentificador(nodo->identificador);
         nodo = nodo->siguiente;
     }
+
+    nodo = identificadoresACompletar;
+    while(nodo != NULL){
+        NodoTS* nodoAEliminar = nodo;
+        nodo = nodo->siguiente;
+        free(nodoAEliminar);
+    }
+
     identificadoresACompletar = NULL;
 }
 
@@ -205,6 +207,14 @@ void escribirValores(){
         nodo = nodo->siguiente;
     }
     printf("\n");
+
+    nodo = valoresDeExpresiones;
+    while(nodo != NULL){
+        VE* nodoAEliminar = nodo;
+        nodo = nodo->siguiente;
+        free(nodoAEliminar);
+    }
+
     valoresDeExpresiones = NULL;
 }
 
@@ -272,12 +282,10 @@ void asignarValorIdentificador(char* identificador, int valor){
         }
         nodo = nodo->siguiente;
     }
-
-    nodo = tablaSimbolos;
-    while(nodo->siguiente != NULL){
-        nodo = nodo->siguiente;
+    if (nodo == NULL){
+        nodo = ultimoNodoTablaSimbolos();
+        nodo->siguiente = crearNodoTS(identificador, valor, 0);
     }
-    nodo->siguiente = crearNodoTS(identificador, valor, 0);
 }
 
 void cargarValorExpresion(int valor){

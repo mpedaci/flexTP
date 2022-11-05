@@ -1,5 +1,6 @@
 inicio
 leer(a);
-escribir(a); 
+b:=100;
+escribir(a,1,b); 
 fin
 EOF
