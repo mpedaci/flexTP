@@ -20,7 +20,7 @@ constante [0-9]+
 espurio [ \t\n]+
 
 %%
-
+"EOF"               {return FDT;}
 {espurio}           {};
 "inicio"            {return INICIO;}
 "fin"               {return FIN;}
@@ -67,13 +67,4 @@ void errorMaxLenChars(){
 void errorLexico(){
     printf("Error lexico: caracter %s invalido. En linea %d.\n", yytext, yylineno);
     exit(0);
-}
-
-int main(int argc, char** argv) {
-    printf("Para analizar desde un archivo ejecute progrma.exe archivo.txt\n");
-    if(argc > 1){
-        yyin = fopen(argv[1], "r");
-    }
-    yyparse();
-    return 0;
 }

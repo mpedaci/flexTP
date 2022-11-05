@@ -4,13 +4,17 @@
     #include <string.h>
 
     #define START_STRING "Comienzo de cadena"
+    #define YYERROR_VERBOSE 1
 
     extern int yylineno;
-    extern int yylex();
+    extern char* yytext;
+    extern int yyleng;
+    extern FILE *yyin;
+    extern int yylex(void);
     void yyerror(const char*);
 
     typedef struct NodoTS{
-        char* identificador;
+        char identificador[32];
         int valor;
         struct NodoTS* siguiente;
     } NodoTS;
@@ -29,6 +33,7 @@
     void cargarIdentificador(char*);
     void agregarIdentificadorACompletar(char*);
     void completarIdentificadores();
+    NodoTS* ultimoNodoTablaSimbolos();
 
     void escribirValores();
 
@@ -38,7 +43,6 @@
     int leerValorIdentificador(char* identificador);
     NodoTS* crearNodoTS(char*, int);
 
-    int existeIdentificador(char*);
     int valorIdentificador(char*);
     void asignarValorIdentificador(char*, int);
 
@@ -53,14 +57,13 @@
     VE* valoresDeExpresiones = NULL;
 %}
 
-%error-verbose
-
 %union {
     int     int_val;
     char*   str_val;
 }
 
-%token <int_val> INICIO FIN SUMA RESTA ASIGNACION PARENTESISIZQ PARENTESISDER PUNTOYCOMA LEER ESCRIBIR COMA CONSTANTE
+%token INICIO FIN SUMA RESTA ASIGNACION PARENTESISIZQ PARENTESISDER PUNTOYCOMA LEER ESCRIBIR COMA FDT
+%token <int_val> CONSTANTE
 %token <str_val> IDENTIFICADOR
 
 %type <str_val> sentencia listaDeIds;
@@ -68,23 +71,25 @@
 
 %left SUMA RESTA
 
-%start programa
+%start objetivo
 
 %%
 
-programa:       INICIO {iniciarTablaDeSimbolos();} sentencias FIN {mensajeFin();};
+objetivo:       programa FDT {mensajeFin();};
 
-sentencias:     sentencias sentencia | sentencia;
+programa:       INICIO {iniciarTablaDeSimbolos();} sentencias FIN;
 
-sentencia:      LEER {leer = 1;} PARENTESISIZQ listaDeIds PARENTESISDER PUNTOYCOMA { completarIdentificadores(); leer = 0; } |
-                ESCRIBIR {escribir = 1;} PARENTESISIZQ listaDeExpresiones PARENTESISDER PUNTOYCOMA { escribirValores(); escribir = 0; } |
-                IDENTIFICADOR ASIGNACION expresion PUNTOYCOMA { asignarValorIdentificador($1, $3); }
+sentencias:     sentencia | sentencias sentencia;
 
-listaDeExpresiones:     expresion { if(escribir == 1) cargarValorExpresion($1); } COMA listaDeExpresiones | 
-                        expresion { if(escribir == 1) cargarValorExpresion($1); };
+sentencia:      IDENTIFICADOR ASIGNACION expresion PUNTOYCOMA { asignarValorIdentificador($1, $3); } |
+                LEER {leer = 1;} PARENTESISIZQ listaDeIds PARENTESISDER PUNTOYCOMA { completarIdentificadores(); leer = 0; } |
+                ESCRIBIR {escribir = 1;} PARENTESISIZQ listaDeExpresiones PARENTESISDER PUNTOYCOMA { escribirValores(); escribir = 0; }
 
-listaDeIds:             IDENTIFICADOR { if(leer == 1) agregarIdentificadorACompletar($1); } COMA listaDeIds |
+listaDeIds:             listaDeIds COMA IDENTIFICADOR { if(leer == 1) agregarIdentificadorACompletar($3); }  |
                         IDENTIFICADOR { if(leer == 1) agregarIdentificadorACompletar($1); };
+
+listaDeExpresiones:     listaDeExpresiones COMA expresion { if(escribir == 1) cargarValorExpresion($1); } | 
+                        expresion { if(escribir == 1) cargarValorExpresion($1); };
 
 expresion:          expresion SUMA primaria {$$ = $1 + $3;} | 
                     expresion RESTA primaria {$$ = $1 - $3;} |
@@ -102,7 +107,7 @@ void yyerror(const char* texto) {
 }
 
 void errorIdentificadorNoDeclarado(char* identificador){
-    printf("Error: identificador %s no declarado, en linea %d.\n", identificador, yylineno);
+    printf("Error: identificador \"%s\" no declarado, en linea %d.\n", identificador, yylineno);
     exit(0);
 }
 
@@ -151,13 +156,21 @@ void completarIdentificadores(){
     identificadoresACompletar = NULL;
 }
 
-void cargarIdentificador(char* identificador){
+NodoTS* ultimoNodoTablaSimbolos(){
     NodoTS* nodo = tablaSimbolos;
     while(nodo->siguiente != NULL){
         nodo = nodo->siguiente;
     }
-    nodo->siguiente = crearNodoTS(identificador, leerValorIdentificador(identificador));
-    mostrarTablaDeSimbolos();
+    return nodo;
+}
+
+void cargarIdentificador(char* identificador){
+    NodoTS* nodo = ultimoNodoTablaSimbolos();
+
+    int valor = leerValorIdentificador(identificador);
+
+    NodoTS* nodoNuevo = crearNodoTS(identificador, valor);
+    nodo->siguiente = nodoNuevo;
 }
 
 int leerValorIdentificador(char* identificador){
@@ -169,10 +182,14 @@ int leerValorIdentificador(char* identificador){
 
 NodoTS* crearNodoTS(char* identificador, int valor){
     NodoTS *nodo;
-
     nodo = (NodoTS*)malloc(sizeof(NodoTS));
 
-    nodo->identificador = identificador;
+    if (nodo == NULL){
+        printf("Error: no se pudo crear el nodo de la tabla de simbolos.\n");
+        exit(0);
+    }
+    
+    strcpy(nodo->identificador, identificador);
     nodo->valor = valor;
     nodo->siguiente = NULL;
 
@@ -203,17 +220,6 @@ void mostrarTablaDeSimbolos(){
         nodo = nodo->siguiente;
     }
     printf("========================\n\n");
-}
-
-int existeIdentificador(char* identificador){
-    NodoTS* nodo = tablaSimbolos;
-    while(nodo != NULL){
-        if(strcmp(nodo->identificador, identificador) == 0){
-            return 1;
-        }
-        nodo = nodo->siguiente;
-    }
-    return 0;
 }
 
 int valorIdentificador(char* identificador){
@@ -261,4 +267,13 @@ VE* leerValorExpresion(int valor){
     nodo->valor = valor;
     nodo->siguiente = NULL;
     return nodo;
+}
+
+int main(int argc, char** argv) {
+    printf("Para analizar desde un archivo ejecute progrma.exe archivo.txt\n");
+    if(argc > 1){
+        yyin = fopen(argv[1], "r");
+    }
+    yyparse();
+    return 0;
 }

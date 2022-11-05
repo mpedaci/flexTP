@@ -2,3 +2,4 @@ inicio
 leer(a);
 escribir(a); 
 fin
+EOF
