@@ -45,46 +45,31 @@
 
 %%
 
-input:
-INICIO programa
+input:                  INICIO programa;
 
-programa:
-listaSentencias FIN FDT {finalizarPrograma();}
-;
+programa:               listaSentencias FIN FDT {finalizarPrograma();};
 
-listaSentencias:
-sentencia
-| listaSentencias sentencia ;
+listaSentencias:        sentencia | listaSentencias sentencia;
 
-sentencia:
-ID IGUAL expresion SEPARADOR {escribirExpresionAsignacion($1,$3);}
-| LEER PARENTESISIZQ listaIdentificadores PARENTESISDER SEPARADOR {escribirExpresionLeer($3);}
-| ESCRIBIR PARENTESISIZQ listaExpresiones PARENTESISDER SEPARADOR {escribirExpresionEscribir($3);}
-;
+sentencia:              ID IGUAL expresion SEPARADOR {escribirExpresionAsignacion($1,$3);} | 
+                        LEER PARENTESISIZQ listaIdentificadores PARENTESISDER SEPARADOR {escribirExpresionLeer($3);} | 
+                        ESCRIBIR PARENTESISIZQ listaExpresiones PARENTESISDER SEPARADOR {escribirExpresionEscribir($3);};
 
-listaIdentificadores:
-listaIdentificadores COMA ID {$$ = agregar($1,$3,',');}
-| ID
-;
+listaIdentificadores:   listaIdentificadores COMA ID {$$ = agregar($1,$3,',');} |
+                        ID;
 
-listaExpresiones:
-listaExpresiones COMA expresion {$$ = agregar($1,$3,',');}
-| expresion
-;
+listaExpresiones:       listaExpresiones COMA expresion {$$ = agregar($1,$3,',');} |
+                        expresion;
 
-expresion:
-primaria
-| expresion OPERADOR primaria {$$ = agregar($1,$3,buff);}
-;
+expresion:              primaria |
+                        expresion OPERADOR primaria {$$ = agregar($1,$3,buff);};
 
-primaria:
-ID
-| CONSTANTE {$$ = copiarValor(); listSize++;}
-;
+primaria:               ID | 
+                        CONSTANTE {$$ = copiarValor(); listSize++;};
 
-ID:
-IDENTIFICADOR {$$ = copiarValor(); buscarIdentificador($$);}
-;
+ID:                     IDENTIFICADOR {$$ = copiarValor(); buscarIdentificador($$);};
+
+
 %%
 
 char* agregar(char* lista,char* elemento, char separator){
