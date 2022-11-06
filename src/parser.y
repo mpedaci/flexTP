@@ -26,6 +26,7 @@
     } VE;
     
     void removeChar(char*, char);
+    void parseError(char*);
 
     void errorIdentificadorNoDeclarado(char*);
     void errorPalabraReservada(char*);
