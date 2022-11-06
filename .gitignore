@@ -1,2 +1,2 @@
-src/compiled/*
-src/output.c
+compiled/*
+output.c
