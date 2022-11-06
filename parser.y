@@ -363,12 +363,12 @@ void finalizarPrograma(){
 // MENU & MAIN FUNCTIONS
 
 void help(char *programa){
-    fprintf (stderr, "MICRO PARSER\n\n");
-    fprintf (stderr, "Uso %s [OPCIONES]\n", programa);
-    fprintf (stderr, "    -?, -H\t\tPresenta esta ayuda en pantalla.\n");
-    fprintf (stderr, "    -l\t\tActiva el parser en vivo.\n");
-    fprintf (stderr, "    -f [archivo]\t\tEspecifica el nombre del archivo a parserar.\n");
-    fprintf (stderr, "    -c [archivo]\t\tEspecifica el nombre del archivo a parserar y convertir a c.\n");
+    fprintf(stderr, "MICRO PARSER\n\n");
+    fprintf(stderr, "Uso %s [OPCIONES]\n", programa);
+    fprintf(stderr, "    -?, -H\t\tPresenta esta ayuda en pantalla.\n");
+    fprintf(stderr, "    -l\t\tActiva el parser en vivo.\n");
+    fprintf(stderr, "    -f [archivo]\t\tEspecifica el nombre del archivo a parserar.\n");
+    fprintf(stderr, "    -c [archivo]\t\tEspecifica el nombre del archivo a parserar y convertir a c.\n");
     exit(2);  
 }
 
