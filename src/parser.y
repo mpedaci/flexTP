@@ -5,6 +5,8 @@
     #include <unistd.h>
 
     #define YYERROR_VERBOSE 1
+    #define MODO_CONVERT_C 1
+    #define MODO_LIVE 0
 
     extern int yylineno;
     extern char* yytext;
@@ -20,10 +22,10 @@
         struct NodoTS* siguiente;
     } NodoTS;
 
-    typedef struct VE{
+    typedef struct NodoValorExp{
         int valor;
-        struct VE* siguiente;
-    } VE;
+        struct NodoValorExp* siguiente;
+    } NodoValorExp;
     
     void removeChar(char*, char);
     void parseError(char*);
@@ -32,15 +34,19 @@
     void errorPalabraReservada(char*);
     
     void iniciarTablaDeSimbolos();
-    void cargarIdentificador(char*);
+    void cargarIdentificador(char*, int);
     void agregarIdentificadorACompletar(char*);
     void completarIdentificadores();
+    void limpiarIdentificadoresACompletar();
     NodoTS* ultimoNodoTablaSimbolos();
 
     void escribirValores();
 
     void finalizarPrograma(void);
     void mostrarTablaDeSimbolos();
+
+    void escribirExpresionLeer();
+    void escribirExpresionEscribir();
 
     int leerValorIdentificador(char*);
     int existeIdentificador(char*);
@@ -50,13 +56,25 @@
 
     int valorIdentificador(char*);
     void asignarValorIdentificador(char*, int);
+    void agregarAExpresion(char*);
+
+    void compilarC();
+    void copiar(FILE*, FILE*);
 
     void cargarValorExpresion(int);
-    VE* leerValorExpresion(int);
+    void limpiarValoresDeExpresiones();
+    NodoValorExp* leerValorExpresion(int);
 
     NodoTS* tablaSimbolos = NULL;
     NodoTS* identificadoresACompletar = NULL;  
-    VE* valoresDeExpresiones = NULL;
+    NodoValorExp* valoresDeExpresiones = NULL;
+
+    int operar(int, char, int);
+
+    // Conversion a C
+    int convert_mode = MODO_CONVERT_C;
+    FILE *buffer;
+    char *expresion = NULL;
 %}
 
 %union {
@@ -66,7 +84,7 @@
 
 %token INICIO FIN SUMA RESTA ASIGNACION PARENTESISIZQ PARENTESISDER PUNTOYCOMA LEER ESCRIBIR COMA FDT
 %token <int_val> CONSTANTE
-%token <str_val> IDENTIFICADOR
+%token <str_val> IDENTIFICADOR OPERADOR
 
 %type <str_val> sentencia listaDeIds;
 %type <int_val> expresion primaria listaDeExpresiones;
@@ -77,7 +95,7 @@
 
 input:                  INICIO programa;
 
-programa:               sentencias FIN FDT { finalizarPrograma(); };
+programa:               sentencias FIN FDT { compilarC(); finalizarPrograma(); };
 
 sentencias:             sentencia | sentencias sentencia;
 
@@ -89,18 +107,71 @@ listaDeIds:             IDENTIFICADOR { agregarIdentificadorACompletar($1); } |
                         listaDeIds COMA IDENTIFICADOR { agregarIdentificadorACompletar($3); } ;
 
 listaDeExpresiones:     expresion { cargarValorExpresion($1); } |
-                        listaDeExpresiones COMA expresion { cargarValorExpresion($3); } ;
+                        listaDeExpresiones COMA { agregarAExpresion(","); } expresion { cargarValorExpresion($4); } ;
 
 expresion:              primaria |
-                        expresion SUMA primaria { $$ = $1 + $3; } |
-                        expresion RESTA primaria { $$ = $1 - $3; } ;
+                        expresion OPERADOR { agregarAExpresion($2); } primaria { $$ = operar($1, $2[0], $4); } ;
 
 primaria:               IDENTIFICADOR {
                             existeIdentificadorYNoEsPalabraReservada($1);
+                            agregarAExpresion($1);
                             $$ = valorIdentificador($1);
                         } | 
-                        CONSTANTE ;
+                        CONSTANTE {
+                            char bufferChar[33];
+                            itoa($1, bufferChar, 10);
+                            agregarAExpresion(bufferChar);
+                            $$ = $1;
+                        };
 %%
+
+void copiar(FILE* dst, FILE* src){
+    char ch = fgetc(src);
+    while (ch != EOF)
+    {
+        fputc(ch,dst);
+        ch = fgetc(src);
+    }
+}
+
+void compilarC(){
+    if(convert_mode == MODO_CONVERT_C){
+        fclose(buffer);
+
+        FILE* buffer_lectura = fopen("buffer.f","r");
+
+        FILE *outputC = fopen("output.c", "w+");
+        fprintf(outputC, "#include <stdio.h>\n");
+        fprintf(outputC, "#include <stdlib.h>\n");
+        fprintf(outputC, "\n");
+        fprintf(outputC, "int main(){\n");
+
+        copiar(outputC, buffer_lectura);
+
+        fprintf(outputC, "\n");
+        fprintf(outputC, "return 0;\n");
+        fprintf(outputC, "}\n");
+
+        fclose(outputC);
+        fclose(buffer_lectura);
+
+    }
+}
+
+int operar(int a, char op, int b){
+    int resultado = 0;
+    switch(op){
+        case '+':
+            resultado = a + b;
+            break;
+        case '-':
+            resultado = a - b;
+            break;
+        default:
+            break;
+    }
+    return resultado;
+}
 
 void removeChar(char* str, char charToRemmove){
     int i, j;
@@ -185,11 +256,21 @@ void agregarIdentificadorACompletar(char* identificador){
 void completarIdentificadores(){
     NodoTS* nodo = identificadoresACompletar;
     while(nodo != NULL){
-        cargarIdentificador(nodo->identificador);
+        int valor = 0;
+        if (convert_mode == MODO_CONVERT_C) {
+            escribirExpresionLeer(nodo->identificador);
+        } else if (convert_mode == MODO_LIVE){
+            valor = leerValorIdentificador(nodo->identificador);
+        }
+        cargarIdentificador(nodo->identificador, valor);
         nodo = nodo->siguiente;
     }
 
-    nodo = identificadoresACompletar;
+    limpiarIdentificadoresACompletar();
+}
+
+void limpiarIdentificadoresACompletar(){
+    NodoTS* nodo = identificadoresACompletar;
     while(nodo != NULL){
         NodoTS* nodoAEliminar = nodo;
         nodo = nodo->siguiente;
@@ -197,6 +278,11 @@ void completarIdentificadores(){
     }
 
     identificadoresACompletar = NULL;
+}
+
+void escribirExpresionLeer(char *identificador){
+    fprintf(buffer, "int %s;\n", identificador);
+    fprintf(buffer, "scanf(\"%%d\", &%s);\n", identificador);
 }
 
 NodoTS* ultimoNodoTablaSimbolos(){
@@ -207,11 +293,8 @@ NodoTS* ultimoNodoTablaSimbolos(){
     return nodo;
 }
 
-void cargarIdentificador(char* identificador){
+void cargarIdentificador(char* identificador, int valor){
     NodoTS* nodo = ultimoNodoTablaSimbolos();
-
-    int valor = leerValorIdentificador(identificador);
-
     NodoTS* nodoNuevo = crearNodoTS(identificador, valor, 0);
     nodo->siguiente = nodoNuevo;
 }
@@ -240,18 +323,41 @@ NodoTS* crearNodoTS(char* identificador, int valor, int reservada){
     return nodo;
 }
 
-void escribirValores(){
-    VE* nodo = valoresDeExpresiones;
-    
-    while(nodo != NULL){
-        printf("%d ", nodo->valor);
-        nodo = nodo->siguiente;
-    }
-    printf("\n");
+void agregarAExpresion(char *caracteres){
+    char *expresionTemp = malloc(strlen(expresion) + strlen(caracteres) + 2);
+    sprintf(expresionTemp,"%s%s",expresion,caracteres);
+    free(expresion);
+    expresion = expresionTemp;
+}
 
-    nodo = valoresDeExpresiones;
+void escribirValores(){
+    if (convert_mode == MODO_CONVERT_C){
+        escribirExpresionEscribir();
+    } else {
+        NodoValorExp* nodo = valoresDeExpresiones;
+        while(nodo != NULL){
+            printf("%d ", nodo->valor);
+            nodo = nodo->siguiente;
+        }
+        printf("\n");
+    }
+
+    limpiarValoresDeExpresiones();
+}
+
+void escribirExpresionEscribir(){
+    char* token = strtok(expresion, ",");
+    while (token != NULL){
+        fprintf(buffer,"printf(\"%%d\\n\", %s);\n", token);
+        token = strtok(NULL, ",");
+    }
+    expresion[0] = '\0';
+}
+
+void limpiarValoresDeExpresiones(){
+    NodoValorExp* nodo = valoresDeExpresiones;
     while(nodo != NULL){
-        VE* nodoAEliminar = nodo;
+        NodoValorExp* nodoAEliminar = nodo;
         nodo = nodo->siguiente;
         free(nodoAEliminar);
     }
@@ -260,6 +366,10 @@ void escribirValores(){
 }
 
 void finalizarPrograma(){   
+    if (convert_mode == MODO_CONVERT_C){
+        fclose(buffer);
+        remove("buffer.f");
+    }
     mostrarTablaDeSimbolos();
     exit(0);
 }
@@ -327,13 +437,17 @@ void asignarValorIdentificador(char* identificador, int valor){
         nodo = ultimoNodoTablaSimbolos();
         nodo->siguiente = crearNodoTS(identificador, valor, 0);
     }
+    if (convert_mode == MODO_CONVERT_C){
+        fprintf(buffer, "int %s = %s;\n", identificador, expresion);
+        expresion[0] = '\0';
+    }
 }
 
 void cargarValorExpresion(int valor){
     if (valoresDeExpresiones == NULL){
         valoresDeExpresiones = leerValorExpresion(valor);
     } else {
-        VE* nodo = valoresDeExpresiones;
+        NodoValorExp* nodo = valoresDeExpresiones;
         while(nodo->siguiente != NULL){
             nodo = nodo->siguiente;
         }
@@ -341,9 +455,9 @@ void cargarValorExpresion(int valor){
     }
 }
 
-VE* leerValorExpresion(int valor){
-    VE* nodo;
-    nodo = (VE*)malloc(sizeof(VE));
+NodoValorExp* leerValorExpresion(int valor){
+    NodoValorExp* nodo;
+    nodo = (NodoValorExp*)malloc(sizeof(NodoValorExp));
     nodo->valor = valor;
     nodo->siguiente = NULL;
     return nodo;
@@ -356,14 +470,14 @@ void help(char *programa){
     fprintf (stderr, "    -l\t\tActiva el parser en vivo.\n");
     fprintf (stderr, "    -f [archivo]\t\tEspecifica el nombre del archivo a parserar.\n");
     fprintf (stderr, "    -c [archivo]\t\tEspecifica el nombre del archivo a parserar y convertir a c.\n");
-    exit (2);  
+    exit(2);  
 }
 
 int main(int argc, char *argv[]) {
     extern char* optarg;
     int c;
 
-    while ((c = getopt (argc, argv, "lf:c:H")) != -1){
+    while ((c = getopt(argc, argv, "lf:c:H")) != -1){
         switch (c) {
             case 'l':
                 /* LIVE MODE */
@@ -377,12 +491,17 @@ int main(int argc, char *argv[]) {
             case 'c':
                 /* CONVERSOR MODE */
                 printf("Modo parser de archivo a C activado.\n\n");
+                convert_mode = 1;
+                expresion = malloc(1);
+                expresion[0] = '\0';
+                buffer = fopen("buffer.f","w+");
                 yyin = fopen(optarg, "r");
                 break;
             case 'H':
                 help(argv[0]);
                 break;
             default:
+                help(argv[0]);
                 exit(1);
         }
     }

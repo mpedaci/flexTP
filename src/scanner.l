@@ -18,6 +18,7 @@
 identificador [a-zA-Z][a-zA-Z0-9]*
 constante [0-9]+
 espurio [ \t\n]+
+operador [+-]
 
 %%
 "EOF"               {return FDT;}
@@ -33,8 +34,7 @@ espurio [ \t\n]+
 ","                 {return COMA;}
 "("                 {return PARENTESISIZQ;}
 ")"                 {return PARENTESISDER;}
-"+"                 {return SUMA;}
-"-"                 {return RESTA;}
+{operador}          { copyToVal(yytext, 1); return OPERADOR; }
 .                   {errorLexico();}
 
 %%
