@@ -25,6 +25,7 @@
         struct VE* siguiente;
     } VE;
     
+    void removeChar(char*, char);
 
     void errorIdentificadorNoDeclarado(char*);
     void errorPalabraReservada(char*);
@@ -101,18 +102,58 @@ primaria:               IDENTIFICADOR {
                         CONSTANTE ;
 %%
 
+void removeChar(char* str, char charToRemmove){
+    int i, j;
+    int len = strlen(str);
+    for(i=0; i<len; i++)
+    {
+        if(str[i] == charToRemmove)
+        {
+            for(j=i; j<len; j++)
+            {
+                str[j] = str[j+1];
+            }
+            len--;
+            i--;
+        }
+    }
+}
+
+void parseError(char* textoError){
+    removeChar(textoError, ',');
+    char* token = strtok(textoError, " ");
+    while(token != NULL) {
+        if (strcmp(token, "syntax") != 0 && strcmp(token, "error") != 0){
+            if (strcmp(token, "unexpected") == 0){
+                token = strtok(NULL, " ");
+                printf("se recibio %s y se esperadaba ", token);
+            } else if (strcmp(token, "expecting") == 0 || strcmp(token, "or") == 0) {
+                if (strcmp(token, "or") == 0){
+                    printf("o ");
+                }
+                token = strtok(NULL, " ");
+                printf("%s ", token);
+            }
+        }
+        token = strtok(NULL, " ");
+    }
+}
+
 void yyerror(const char* texto) {
-    printf("Error: %s en la linea %d.\n", texto, yylineno);
+    char* textoError = strdup(texto);
+    printf("Error Sintactico: ");
+    parseError(textoError);   
+    printf("en la linea %d.\n", yylineno);
     finalizarPrograma();
 }
 
 void errorIdentificadorNoDeclarado(char* identificador){
-    printf("Error: identificador \"%s\" no declarado, en linea %d.\n", identificador, yylineno);
+    printf("Error Semantico: identificador \"%s\" no declarado, en linea %d.\n", identificador, yylineno);
     finalizarPrograma();
 }
 
 void errorPalabraReservada(char* palabra){
-    printf("Error: identificador %s es una palabra reservada, en linea %d.\n", palabra, yylineno);
+    printf("Error Semantico: identificador %s es una palabra reservada, en linea %d.\n", palabra, yylineno);
     finalizarPrograma();
 }
 

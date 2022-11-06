@@ -61,6 +61,6 @@ void errorMaxLenChars(){
 }
 
 void errorLexico(){
-    printf("Error lexico: caracter %s invalido. En linea %d.\n", yytext, yylineno);
+    printf("Error Lexico: caracter %s invalido. En linea %d.\n", yytext, yylineno);
     exit(0);
 }
