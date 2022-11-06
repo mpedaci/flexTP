@@ -3,7 +3,6 @@
     #include <stdlib.h>
     #include <string.h>
 
-    #define START_STRING "Comienzo de cadena"
     #define YYERROR_VERBOSE 1
 
     extern int yylineno;
@@ -31,7 +30,6 @@
     void errorIdentificadorNoDeclarado(char*);
     void errorPalabraReservada(char*);
     
-    void inicializarVariables();
     void iniciarTablaDeSimbolos();
     void cargarIdentificador(char*);
     void agregarIdentificadorACompletar(char*);
@@ -78,7 +76,7 @@
 
 input:                  INICIO programa;
 
-programa:               sentencias FIN FDT {finalizarPrograma();};
+programa:               sentencias FIN FDT { finalizarPrograma(); };
 
 sentencias:             sentencia | sentencias sentencia;
 
