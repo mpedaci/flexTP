@@ -3,6 +3,8 @@
     #include <stdlib.h>
     #include <string.h>
     #include <unistd.h>
+    #include "tablaSimbolos.h"
+    #include "utils.h"
 
     #define YYERROR_VERBOSE 1
     #define MODO_CONVERT_C 1
@@ -13,68 +15,65 @@
     extern int yyleng;
     extern FILE *yyin;
     extern int yylex(void);
-    void yyerror(const char*);
-
-    typedef struct NodoTS{
-        char identificador[32];
-        int valor;
-        int reservada;
-        struct NodoTS* siguiente;
-    } NodoTS;
 
     typedef struct NodoValorExp{
         int valor;
         struct NodoValorExp* siguiente;
     } NodoValorExp;
     
-    void removeChar(char*, char);
-    void parseError(char*);
+    // ERRORES
+    void yyerror(const char*);
 
     void errorIdentificadorNoDeclarado(char*);
     void errorPalabraReservada(char*);
+    void parseError(char*);
+
+    // COMPILAR C
+    void compilarC();
     
-    void iniciarTablaDeSimbolos();
-    void cargarIdentificador(char*, int);
+    void escribirExpresionLeer(char*);
+    void escribirExpresionEscribir();
+    void escribirExpresionAsignar(char*);
+    int existeIdentificadorYNoEsPalabraReservada(char*);
+
+    // FUNCIONES PARA COMPILAR A C
+    void agregarAExpresion(char*);
+    void agregarAExpresionConstante(int);
+
+    // FUNCIONES PARA SEMANTICA
+    int operar(int, char, int);
+
+    // IDENTIFICADORES
     void agregarIdentificadorACompletar(char*);
     void completarIdentificadores();
     void limpiarIdentificadoresACompletar();
-    NodoTS* ultimoNodoTablaSimbolos();
-
+    int leerValorIdentificador(char*);
     void escribirValores();
 
-    void finalizarPrograma(void);
-    void mostrarTablaDeSimbolos();
-
-    void escribirExpresionLeer();
-    void escribirExpresionEscribir();
-
-    int leerValorIdentificador(char*);
-    int existeIdentificador(char*);
-    int esPalabraReservada(char*);
-    int existeIdentificadorYNoEsPalabraReservada(char*);
-    NodoTS* crearNodoTS(char*, int, int);
-
-    int valorIdentificador(char*);
-    void asignarValorIdentificador(char*, int);
-    void agregarAExpresion(char*);
-
-    void compilarC();
-    void copiar(FILE*, FILE*);
-
+    // EXPRESIONES
     void cargarValorExpresion(int);
-    void limpiarValoresDeExpresiones();
     NodoValorExp* leerValorExpresion(int);
+    void limpiarValoresDeExpresiones();
 
+    // START FUNCTION
+    void iniciarTablaDeSimbolos();
+
+    // END FUNCTION
+    void finalizarPrograma();
+
+    // MENU & MAIN FUNCTIONS
+    void help(char*);
+    void menu(int, char*[]);
+    int main(int, char*[]);
+
+    // VARIABLES GLOBALES
     NodoTS* tablaSimbolos = NULL;
     NodoTS* identificadoresACompletar = NULL;  
     NodoValorExp* valoresDeExpresiones = NULL;
-
-    int operar(int, char, int);
-
-    // Conversion a C
-    int convert_mode = MODO_CONVERT_C;
+    // VARIABLES PARA CONVERTIR A C
     FILE *buffer;
     char *expresion = NULL;
+    int convert_mode = MODO_LIVE;
 %}
 
 %union {
@@ -99,9 +98,9 @@ programa:               sentencias FIN FDT { compilarC(); finalizarPrograma(); }
 
 sentencias:             sentencia | sentencias sentencia;
 
-sentencia:              IDENTIFICADOR ASIGNACION expresion PUNTOYCOMA { asignarValorIdentificador($1, $3); } |
+sentencia:              IDENTIFICADOR ASIGNACION expresion PUNTOYCOMA { escribirExpresionAsignar($1); asignarIdentificador($1, $3); } |
                         LEER PARENTESISIZQ listaDeIds PARENTESISDER PUNTOYCOMA { completarIdentificadores(); } |
-                        ESCRIBIR PARENTESISIZQ listaDeExpresiones PARENTESISDER PUNTOYCOMA { escribirValores(); } ;
+                        ESCRIBIR PARENTESISIZQ listaDeExpresiones PARENTESISDER PUNTOYCOMA { escribirExpresionEscribir(); escribirValores(); } ;
 
 listaDeIds:             IDENTIFICADOR { agregarIdentificadorACompletar($1); } |
                         listaDeIds COMA IDENTIFICADOR { agregarIdentificadorACompletar($3); } ;
@@ -118,76 +117,28 @@ primaria:               IDENTIFICADOR {
                             $$ = valorIdentificador($1);
                         } | 
                         CONSTANTE {
-                            char bufferChar[33];
-                            itoa($1, bufferChar, 10);
-                            agregarAExpresion(bufferChar);
+                            agregarAExpresionConstante($1);
                             $$ = $1;
                         };
 %%
 
-void copiar(FILE* dst, FILE* src){
-    char ch = fgetc(src);
-    while (ch != EOF)
-    {
-        fputc(ch,dst);
-        ch = fgetc(src);
-    }
+// ERRORES
+void yyerror(const char* texto) {
+    char* textoError = strdup(texto);
+    printf("Error Sintactico: ");
+    parseError(textoError);   
+    printf("en la linea %d.\n", yylineno);
+    finalizarPrograma();
 }
 
-void compilarC(){
-    if(convert_mode == MODO_CONVERT_C){
-        fclose(buffer);
-
-        FILE* buffer_lectura = fopen("buffer.f","r");
-
-        FILE *outputC = fopen("output.c", "w+");
-        fprintf(outputC, "#include <stdio.h>\n");
-        fprintf(outputC, "#include <stdlib.h>\n");
-        fprintf(outputC, "\n");
-        fprintf(outputC, "int main(){\n");
-
-        copiar(outputC, buffer_lectura);
-
-        fprintf(outputC, "\n");
-        fprintf(outputC, "return 0;\n");
-        fprintf(outputC, "}\n");
-
-        fclose(outputC);
-        fclose(buffer_lectura);
-
-    }
+void errorIdentificadorNoDeclarado(char* identificador){
+    printf("Error Semantico: identificador \"%s\" no declarado, en linea %d.\n", identificador, yylineno);
+    finalizarPrograma();
 }
 
-int operar(int a, char op, int b){
-    int resultado = 0;
-    switch(op){
-        case '+':
-            resultado = a + b;
-            break;
-        case '-':
-            resultado = a - b;
-            break;
-        default:
-            break;
-    }
-    return resultado;
-}
-
-void removeChar(char* str, char charToRemmove){
-    int i, j;
-    int len = strlen(str);
-    for(i=0; i<len; i++)
-    {
-        if(str[i] == charToRemmove)
-        {
-            for(j=i; j<len; j++)
-            {
-                str[j] = str[j+1];
-            }
-            len--;
-            i--;
-        }
-    }
+void errorPalabraReservada(char* palabra){
+    printf("Error Semantico: identificador %s es una palabra reservada, en linea %d.\n", palabra, yylineno);
+    finalizarPrograma();
 }
 
 void parseError(char* textoError){
@@ -210,201 +161,6 @@ void parseError(char* textoError){
     }
 }
 
-void yyerror(const char* texto) {
-    char* textoError = strdup(texto);
-    printf("Error Sintactico: ");
-    parseError(textoError);   
-    printf("en la linea %d.\n", yylineno);
-    finalizarPrograma();
-}
-
-void errorIdentificadorNoDeclarado(char* identificador){
-    printf("Error Semantico: identificador \"%s\" no declarado, en linea %d.\n", identificador, yylineno);
-    finalizarPrograma();
-}
-
-void errorPalabraReservada(char* palabra){
-    printf("Error Semantico: identificador %s es una palabra reservada, en linea %d.\n", palabra, yylineno);
-    finalizarPrograma();
-}
-
-void iniciarTablaDeSimbolos(){
-    NodoTS *nodoINICIO = crearNodoTS("inicio", 0, 1);
-    NodoTS *nodoFIN = crearNodoTS("fin", 0, 1);
-    NodoTS *nodoESCRIBIR = crearNodoTS("escribir", 0, 1);
-    NodoTS *nodoLEER = crearNodoTS("leer", 0, 1);
-
-    nodoESCRIBIR->siguiente = nodoLEER;
-    nodoFIN->siguiente = nodoESCRIBIR;
-    nodoINICIO->siguiente = nodoFIN;
-
-    tablaSimbolos = nodoINICIO;
-}
-
-void agregarIdentificadorACompletar(char* identificador){
-    if (identificadoresACompletar == NULL){
-        identificadoresACompletar = crearNodoTS(identificador, 0, 0);
-    } else {
-        NodoTS* nodo = identificadoresACompletar;
-        while(nodo->siguiente != NULL){
-            nodo = nodo->siguiente;
-        }
-        nodo->siguiente = crearNodoTS(identificador, 0, 0);
-    }
-}
-
-void completarIdentificadores(){
-    NodoTS* nodo = identificadoresACompletar;
-    while(nodo != NULL){
-        int valor = 0;
-        if (convert_mode == MODO_CONVERT_C) {
-            escribirExpresionLeer(nodo->identificador);
-        } else if (convert_mode == MODO_LIVE){
-            valor = leerValorIdentificador(nodo->identificador);
-        }
-        cargarIdentificador(nodo->identificador, valor);
-        nodo = nodo->siguiente;
-    }
-
-    limpiarIdentificadoresACompletar();
-}
-
-void limpiarIdentificadoresACompletar(){
-    NodoTS* nodo = identificadoresACompletar;
-    while(nodo != NULL){
-        NodoTS* nodoAEliminar = nodo;
-        nodo = nodo->siguiente;
-        free(nodoAEliminar);
-    }
-
-    identificadoresACompletar = NULL;
-}
-
-void escribirExpresionLeer(char *identificador){
-    fprintf(buffer, "int %s;\n", identificador);
-    fprintf(buffer, "scanf(\"%%d\", &%s);\n", identificador);
-}
-
-NodoTS* ultimoNodoTablaSimbolos(){
-    NodoTS* nodo = tablaSimbolos;
-    while(nodo->siguiente != NULL){
-        nodo = nodo->siguiente;
-    }
-    return nodo;
-}
-
-void cargarIdentificador(char* identificador, int valor){
-    NodoTS* nodo = ultimoNodoTablaSimbolos();
-    NodoTS* nodoNuevo = crearNodoTS(identificador, valor, 0);
-    nodo->siguiente = nodoNuevo;
-}
-
-int leerValorIdentificador(char* identificador){
-    int valor;
-    printf("Ingrese el valor para el identificador %s: ", identificador);
-    scanf("%d", &valor);
-    return valor;
-}
-
-NodoTS* crearNodoTS(char* identificador, int valor, int reservada){
-    NodoTS *nodo;
-    nodo = (NodoTS*)malloc(sizeof(NodoTS));
-
-    if (nodo == NULL){
-        printf("Error: no se pudo crear el nodo de la tabla de simbolos.\n");
-        finalizarPrograma();
-    }
-    
-    strcpy(nodo->identificador, identificador);
-    nodo->valor = valor;
-    nodo->reservada = reservada;
-    nodo->siguiente = NULL;
-
-    return nodo;
-}
-
-void agregarAExpresion(char *caracteres){
-    char *expresionTemp = malloc(strlen(expresion) + strlen(caracteres) + 2);
-    sprintf(expresionTemp,"%s%s",expresion,caracteres);
-    free(expresion);
-    expresion = expresionTemp;
-}
-
-void escribirValores(){
-    if (convert_mode == MODO_CONVERT_C){
-        escribirExpresionEscribir();
-    } else {
-        NodoValorExp* nodo = valoresDeExpresiones;
-        while(nodo != NULL){
-            printf("%d ", nodo->valor);
-            nodo = nodo->siguiente;
-        }
-        printf("\n");
-    }
-
-    limpiarValoresDeExpresiones();
-}
-
-void escribirExpresionEscribir(){
-    char* token = strtok(expresion, ",");
-    while (token != NULL){
-        fprintf(buffer,"printf(\"%%d\\n\", %s);\n", token);
-        token = strtok(NULL, ",");
-    }
-    expresion[0] = '\0';
-}
-
-void limpiarValoresDeExpresiones(){
-    NodoValorExp* nodo = valoresDeExpresiones;
-    while(nodo != NULL){
-        NodoValorExp* nodoAEliminar = nodo;
-        nodo = nodo->siguiente;
-        free(nodoAEliminar);
-    }
-
-    valoresDeExpresiones = NULL;
-}
-
-void finalizarPrograma(){   
-    if (convert_mode == MODO_CONVERT_C){
-        fclose(buffer);
-        remove("buffer.f");
-    }
-    mostrarTablaDeSimbolos();
-    exit(0);
-}
-
-void mostrarTablaDeSimbolos(){
-    NodoTS* nodo = tablaSimbolos;
-    printf("\n====TABLA DE SIMBOLOS====\n");
-    while(nodo != NULL){
-        printf("%s ##### %d ##### %d\n", nodo->identificador, nodo->valor, nodo->reservada);
-        nodo = nodo->siguiente;
-    }
-    printf("=========================\n\n");
-}
-
-int existeIdentificador(char* identificador){
-    NodoTS* nodo = tablaSimbolos;
-    while(nodo != NULL){
-        if (strcmp(nodo->identificador, identificador) == 0){
-            return 1;
-        }
-        nodo = nodo->siguiente;
-    }
-    return 0;
-}
-
-int esPalabraReservada(char* identificador){
-    NodoTS* nodo = tablaSimbolos;
-    while(nodo != NULL){
-        if (strcmp(nodo->identificador, identificador) == 0){
-            return nodo->reservada;
-        }
-        nodo = nodo->siguiente;
-    }
-}
-
 int existeIdentificadorYNoEsPalabraReservada(char* identificador){
     if (existeIdentificador(identificador) == 0){
         errorIdentificadorNoDeclarado(identificador);
@@ -415,34 +171,131 @@ int existeIdentificadorYNoEsPalabraReservada(char* identificador){
     return 1;
 }
 
-int valorIdentificador(char* identificador){
-    NodoTS* nodo = tablaSimbolos;
-    while(nodo != NULL){
-        if(strcmp(nodo->identificador, identificador) == 0){
-            return nodo->valor;
-        }
-        nodo = nodo->siguiente;
+// COMPILAR C
+void compilarC(){
+    if(convert_mode == MODO_CONVERT_C){
+        fclose(buffer);
+        FILE* buffer_lectura = fopen("buffer.f","r");
+        FILE *outputC = fopen("output.c", "w+");
+        fprintf(outputC, "#include <stdio.h>\n");
+        fprintf(outputC, "#include <stdlib.h>\n");
+        fprintf(outputC, "\n");
+        fprintf(outputC, "int main(){\n");
+        copiar(outputC, buffer_lectura);
+        fprintf(outputC, "\n");
+        fprintf(outputC, "return 0;\n");
+        fprintf(outputC, "}\n");
+        fclose(outputC);
+        fclose(buffer_lectura);
     }
 }
 
-void asignarValorIdentificador(char* identificador, int valor){
-    NodoTS* nodo = tablaSimbolos;
-    while(nodo != NULL){
-        if(strcmp(nodo->identificador, identificador) == 0){
-            nodo->valor = valor;
+void escribirExpresionLeer(char* identificador){
+    if (convert_mode == MODO_CONVERT_C){
+        fprintf(buffer, "int %s;\n", identificador);
+        fprintf(buffer, "scanf(\"%%d\", &%s);\n", identificador);
+    }
+}
+
+void escribirExpresionEscribir(){
+    if (convert_mode == MODO_CONVERT_C){
+        char* token = strtok(expresion, ",");
+        while (token != NULL){
+            fprintf(buffer,"printf(\"%%d\\n\", %s);\n", token);
+            token = strtok(NULL, ",");
         }
-        nodo = nodo->siguiente;
+        expresion[0] = '\0';
     }
-    if (nodo == NULL){
-        nodo = ultimoNodoTablaSimbolos();
-        nodo->siguiente = crearNodoTS(identificador, valor, 0);
-    }
+}
+
+void escribirExpresionAsignar(char* identificador){
     if (convert_mode == MODO_CONVERT_C){
         fprintf(buffer, "int %s = %s;\n", identificador, expresion);
         expresion[0] = '\0';
     }
 }
 
+// FUNCIONES PARA COMPILAR A C
+void agregarAExpresion(char *caracteres){
+    if (convert_mode == MODO_CONVERT_C){
+        char *expresionTemp = malloc(strlen(expresion) + strlen(caracteres) + 2);
+        sprintf(expresionTemp,"%s%s",expresion,caracteres);
+        free(expresion);
+        expresion = expresionTemp;
+    }
+}
+
+void agregarAExpresionConstante(int numero){
+    if (convert_mode == MODO_CONVERT_C){
+        char bufferChar[33];
+        itoa(numero, bufferChar, 10);
+        agregarAExpresion(bufferChar);
+    }
+}
+
+// FUNCIONES PARA SEMANTICA
+int operar(int a, char op, int b){
+    int resultado = 0;
+    switch(op){
+        case '+':
+            resultado = a + b;
+            break;
+        case '-':
+            resultado = a - b;
+            break;
+        default:
+            break;
+    }
+    return resultado;
+}
+
+// IDENTIFICADORES
+void agregarIdentificadorACompletar(char* identificador){
+    NodoTS* nodo = crearNodoTS(identificador, 0, IVARIABLE);
+    if (identificadoresACompletar == NULL){
+        identificadoresACompletar = nodo;
+    } else {
+        NodoTS* nodo = identificadoresACompletar;
+        while(nodo->siguiente != NULL){
+            nodo = nodo->siguiente;
+        }
+        nodo->siguiente = nodo;
+    }
+}
+
+void completarIdentificadores(){
+    NodoTS* nodo = identificadoresACompletar;
+    while(nodo != NULL){
+        int valor = 0;
+        escribirExpresionLeer(nodo->identificador);
+        if (convert_mode == MODO_LIVE){
+            valor = leerValorIdentificador(nodo->identificador);
+        }
+        asignarIdentificador(nodo->identificador, valor);
+        nodo = nodo->siguiente;
+    }
+
+    limpiarIdentificadoresACompletar();
+}
+
+int leerValorIdentificador(char* identificador){
+    int valor;
+    printf("Ingrese el valor para el identificador %s: ", identificador);
+    scanf("%d", &valor);
+    return valor;
+}
+
+void limpiarIdentificadoresACompletar(){
+    NodoTS* nodo = identificadoresACompletar;
+    while(nodo != NULL){
+        NodoTS* nodoAEliminar = nodo;
+        nodo = nodo->siguiente;
+        free(nodoAEliminar);
+    }
+    identificadoresACompletar = NULL;
+}
+
+// EXPRESIONES
 void cargarValorExpresion(int valor){
     if (valoresDeExpresiones == NULL){
         valoresDeExpresiones = leerValorExpresion(valor);
@@ -463,6 +316,52 @@ NodoValorExp* leerValorExpresion(int valor){
     return nodo;
 }
 
+void limpiarValoresDeExpresiones(){
+    NodoValorExp* nodo = valoresDeExpresiones;
+    while(nodo != NULL){
+        NodoValorExp* nodoAEliminar = nodo;
+        nodo = nodo->siguiente;
+        free(nodoAEliminar);
+    }
+
+    valoresDeExpresiones = NULL;
+}
+
+void escribirValores(){
+    if (convert_mode == MODO_CONVERT_C){
+        escribirExpresionEscribir();
+    } else {
+        NodoValorExp* nodo = valoresDeExpresiones;
+        while(nodo != NULL){
+            printf("%d ", nodo->valor);
+            nodo = nodo->siguiente;
+        }
+        printf("\n");
+    }
+
+    limpiarValoresDeExpresiones();
+}
+
+// START FUNCTION
+void iniciarTablaDeSimbolos(){
+    agregarPalabraReservada("inicio");
+    agregarPalabraReservada("fin");
+    agregarPalabraReservada("leer");
+    agregarPalabraReservada("escribir");
+}
+
+// END FUNCTION
+void finalizarPrograma(){   
+    if (convert_mode == MODO_CONVERT_C){
+        fclose(buffer);
+        remove("buffer.f");
+    }
+    mostrarTablaDeSimbolos();
+    exit(0);
+}
+
+// MENU & MAIN FUNCTIONS
+
 void help(char *programa){
     fprintf (stderr, "MICRO PARSER\n\n");
     fprintf (stderr, "Uso %s [OPCIONES]\n", programa);
@@ -473,10 +372,9 @@ void help(char *programa){
     exit(2);  
 }
 
-int main(int argc, char *argv[]) {
+void menu(int argc, char *argv[]){
     extern char* optarg;
     int c;
-
     while ((c = getopt(argc, argv, "lf:c:H")) != -1){
         switch (c) {
             case 'l':
@@ -491,7 +389,7 @@ int main(int argc, char *argv[]) {
             case 'c':
                 /* CONVERSOR MODE */
                 printf("Modo parser de archivo a C activado.\n\n");
-                convert_mode = 1;
+                convert_mode = MODO_CONVERT_C;
                 expresion = malloc(1);
                 expresion[0] = '\0';
                 buffer = fopen("buffer.f","w+");
@@ -505,7 +403,10 @@ int main(int argc, char *argv[]) {
                 exit(1);
         }
     }
+}
 
+int main(int argc, char *argv[]) {
+    menu(argc, argv);
     iniciarTablaDeSimbolos();
     yyparse();
     

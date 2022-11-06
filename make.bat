@@ -2,5 +2,5 @@
 bison -yd parser.y
 flex scanner.l
 mkdir compiled
-gcc y.tab.c lex.yy.c -o compiled/program.exe
+gcc utils.c tablaSimbolos.c y.tab.c lex.yy.c -o compiled/program.exe
 del lex.yy.c y.tab.c y.tab.h
