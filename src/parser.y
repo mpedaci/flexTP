@@ -2,6 +2,7 @@
     #include <stdio.h>
     #include <stdlib.h>
     #include <string.h>
+    #include <unistd.h>
 
     #define YYERROR_VERBOSE 1
 
@@ -348,11 +349,44 @@ VE* leerValorExpresion(int valor){
     return nodo;
 }
 
-int main(int argc, char** argv) {
-    printf("Para analizar desde un archivo ejecute progrma.exe archivo.txt\n");
-    if(argc > 1){
-        yyin = fopen(argv[1], "r");
+void help(char *programa){
+    fprintf (stderr, "MICRO PARSER\n\n");
+    fprintf (stderr, "Uso %s [OPCIONES]\n", programa);
+    fprintf (stderr, "    -?, -H\t\tPresenta esta ayuda en pantalla.\n");
+    fprintf (stderr, "    -l\t\tActiva el parser en vivo.\n");
+    fprintf (stderr, "    -f [archivo]\t\tEspecifica el nombre del archivo a parserar.\n");
+    fprintf (stderr, "    -c [archivo]\t\tEspecifica el nombre del archivo a parserar y convertir a c.\n");
+    exit (2);  
+}
+
+int main(int argc, char *argv[]) {
+    extern char* optarg;
+    int c;
+
+    while ((c = getopt (argc, argv, "lf:c:H")) != -1){
+        switch (c) {
+            case 'l':
+                /* LIVE MODE */
+                printf("Modo parser en vivo activado.\n\n");
+                break;
+            case 'f':
+                /* FILE MODE */
+                printf("Modo parser de archivo activado.\n\n");
+                yyin = fopen(optarg, "r");
+                break;
+            case 'c':
+                /* CONVERSOR MODE */
+                printf("Modo parser de archivo a C activado.\n\n");
+                yyin = fopen(optarg, "r");
+                break;
+            case 'H':
+                help(argv[0]);
+                break;
+            default:
+                exit(1);
+        }
     }
+
     iniciarTablaDeSimbolos();
     yyparse();
     
