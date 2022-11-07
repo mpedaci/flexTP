@@ -21,6 +21,11 @@ Uso programa.exe [OPCIONES]\
 &nbsp; -f [archivo] Especifica el nombre del archivo a parserar (Similar a -l pero la entrada de caracteres es desde un archivo).\
 &nbsp; -c [archivo] Especifica el nombre del archivo a parserar y convertir a c.
 
+## Rutinas semanticas
+- Verificacion de declaracion de identificadores
+- Operaciones de suma y resta
+- Conversion de micro a C
+
 ## Capturas
 ### Programa Micro
 ![programa micro](capturas/programamicro.jpg)
