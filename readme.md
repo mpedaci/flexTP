@@ -4,10 +4,10 @@
 
 ## Equipo de desarrollo
 
-- MOYANO LAUTARO 
-- IDAÑEZ LUCÍA
-- PEDACI MARCOS
 - ENCINAS MAXIMILIANO
+- IDAÑEZ LUCÍA
+- MOYANO LAUTARO 
+- PEDACI MARCOS
 
 
 ## Compilar
