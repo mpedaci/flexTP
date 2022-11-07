@@ -5,7 +5,7 @@
 ## Equipo de desarrollo
 
 - MOYANO LAUTARO 
-- LUCÍA IDAÑEZ
+- IDAÑEZ LUCÍA
 - PEDACI MARCOS
 - ENCINAS MAXIMILIANO
 
